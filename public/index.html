@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Festive Balance Challenge By Arathi</title>
+<title>The Festive Balance Challenge</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -250,14 +250,45 @@
   footer{margin-top:40px; text-align:center; color:var(--ink-soft); font-size:0.82rem;}
   .status-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--sage); margin-right:5px;}
   .status-dot.off{background:var(--brick);}
+
+  /* ---- Brand header ---- */
+  .brand-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+    padding-bottom:18px; margin-bottom:18px;
+    border-bottom:1px dashed var(--line);
+  }
+  .brand-bar img.logo{height:34px; width:auto; display:block;}
+  .host{display:flex; align-items:center; gap:10px;}
+  .host img.avatar{
+    width:44px; height:44px; border-radius:50%;
+    object-fit:cover; border:2px solid var(--panel);
+    box-shadow:0 0 0 1px var(--line);
+  }
+  .host .host-text{line-height:1.25;}
+  .host .host-label{font-size:0.72rem; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.04em;}
+  .host .host-name{font-weight:600; font-size:0.9rem; color:var(--ink);}
+  .host .host-title{font-size:0.78rem; color:var(--ink-soft);}
 </style>
 </head>
 <body>
 <div class="wrap">
 
+  <div class="brand-bar">
+    <img class="logo" src="/images/prana-logo.jpg" alt="Prana — Breathe. Move. Rejuvenate.">
+    <div class="host">
+      <img class="avatar" src="/images/owner.jpg" alt="Challenge host">
+      <div class="host-text">
+        <div class="host-label">Hosted by</div>
+        <div class="host-name">Arathi</div>
+        <div class="host-title">Founder &amp; Instructor</div>
+      </div>
+    </div>
+  </div>
+
   <div class="hero">
     <div class="hero-eyebrow">TEAM CHALLENGE · OCT&nbsp;–&nbsp;NOV</div>
-    <h1>The Festive Balance Challenge by Arathi</h1>
+    <h1>The Festive Balance Challenge</h1>
     <div class="tagline">Move. Nourish. Indulge. Repeat.</div>
     <p class="desc">The festive season is here, and so is our challenge. Enjoy every bit of it without pausing on your health. Join for one month or both — log your points and the leaderboard updates for everyone, automatically.</p>
     <div class="dates">🎉 Runs October through November · Winners announced each month</div>
