@@ -35,24 +35,34 @@ Still on Neon, open the **SQL Editor** and paste in the contents of
 `db/schema.sql` from this project, then run it. This creates the `entries`
 table the app expects — you only need to do this once, ever.
 
-## 3. Run it locally
+## 3. Set an admin password (optional but recommended)
+
+Anyone can log their own points, but deleting or editing *someone else's*
+entry is restricted to a single admin password. Pick any password and set it
+as `ADMIN_PASSWORD` alongside `DATABASE_URL` (see step 5 for how to set
+environment variables on Render). Without it, the admin panel on the page
+will simply reject every login attempt — nothing else is affected.
+
+## 4. Run it locally
 
 ```bash
 npm install
-DATABASE_URL="postgresql://..." npm start
+DATABASE_URL="postgresql://..." ADMIN_PASSWORD="pick-something" npm start
 ```
 
 Open **http://localhost:3000**. If `DATABASE_URL` isn't set, the server logs
-an error and exits immediately rather than starting in a broken state.
+an error and exits immediately rather than starting in a broken state. If
+`ADMIN_PASSWORD` isn't set, the app still runs fine — the admin panel just
+won't accept a login until you add it.
 
-## 4. Deploy it — Render
+## 5. Deploy it — Render
 
 1. Push this folder to a GitHub repo.
 2. On [render.com](https://render.com) → **New +** → **Web Service** → connect the repo.
 3. Build command: `npm install`. Start command: `npm start`.
-4. Go to the **Environment** tab → **Add Environment Variable**:
-   - Key: `DATABASE_URL`
-   - Value: the connection string from step 1
+4. Go to the **Environment** tab → **Add Environment Variable**, twice:
+   - Key: `DATABASE_URL`, Value: the connection string from step 1
+   - Key: `ADMIN_PASSWORD`, Value: whatever password you want to gate admin actions with
 5. Deploy. Render gives you a public `https://your-app.onrender.com` URL.
 
 Confirm it's wired up correctly by visiting
@@ -91,14 +101,22 @@ DATABASE_URL="postgresql://..." npm start   # or set it in your process manager 
 ## How it works
 
 - `GET /api/entries` — returns every logged week
-- `POST /api/entries` — save/update one person's week (`{ name, month, week, counts }`); the server computes the point total itself
-- `DELETE /api/entries/:id` — remove an entry
+- `POST /api/entries` — save/update your own week (`{ name, month, week, counts }`); the server computes the point total itself. Anyone can call this for any name — it's how the shared board works, same as a shared spreadsheet.
+- `PUT /api/entries/:id` — **admin only.** Edit any entry, including someone else's — also handles fixing a typo'd name (it migrates the entry to the corrected id).
+- `DELETE /api/entries/:id` — **admin only.** Remove an entry.
+- `GET /api/admin/verify` — checks an admin password without changing anything (used by the page's login form).
 - `GET /api/health` — confirms the database connection is alive
 - The frontend polls the server every 15 seconds so the leaderboard stays current for everyone with the page open
 
-There's no login and no per-user auth — it's meant for a trusted team, the
-same way a shared spreadsheet would be. Anyone with the link can log points
-under any name.
+Logging your own points needs no login, same as a shared spreadsheet — anyone
+with the link can add points under any name. Editing or deleting *someone
+else's* entry requires the admin password, entered once in the "Admin"
+section near the bottom of the page. One caveat worth knowing: the password
+is checked by the server on every request, but it travels as a plain header
+and is kept in the browser's `sessionStorage` for convenience — fine for
+keeping honest teammates from bumping each other's scores by accident, not
+meant to withstand a determined attacker. Don't reuse a password you care
+about elsewhere.
 
 ## Backing up your data
 

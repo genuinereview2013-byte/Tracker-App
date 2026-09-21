@@ -16,6 +16,7 @@ const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 3000;
 const DATABASE_URL = process.env.DATABASE_URL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 
 if (!DATABASE_URL) {
   console.error(
@@ -24,6 +25,13 @@ if (!DATABASE_URL) {
     'Once you have a connection string, set DATABASE_URL and restart.\n'
   );
   process.exit(1);
+}
+
+if (!ADMIN_PASSWORD) {
+  console.warn(
+    '\nWarning: ADMIN_PASSWORD is not set. Deleting or editing other people\'s\n' +
+    'entries will be disabled until you set it — see README.md.\n'
+  );
 }
 
 // Point values — keep this in sync with public/index.html's ACTIVITIES list.
@@ -96,6 +104,39 @@ const app = express();
 app.use(express.json({ limit: '256kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+function requireAdmin(req, res, next) {
+  if (!ADMIN_PASSWORD) {
+    return res.status(503).json({ error: 'Admin access is not configured on this server (ADMIN_PASSWORD not set).' });
+  }
+  const supplied = req.header('x-admin-password') || '';
+  if (supplied !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Incorrect admin password.' });
+  }
+  next();
+}
+
+function parseEntryBody(body) {
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const month = body.month;
+  const week = parseInt(body.week, 10);
+  const counts = body.counts && typeof body.counts === 'object' ? body.counts : {};
+
+  if (!name) return { error: 'name is required' };
+  if (!MONTHS.includes(month)) return { error: 'month must be October or November' };
+  if (!Number.isInteger(week) || week < 1 || week > 5) return { error: 'week must be an integer 1-5' };
+
+  const cleanCounts = {};
+  let total = 0;
+  for (const key of Object.keys(POINTS)) {
+    const n = Math.max(0, parseInt(counts[key], 10) || 0);
+    cleanCounts[key] = n;
+    total += n * POINTS[key];
+  }
+
+  const id = `${slugify(name)}__${month.toLowerCase()}__week${week}`;
+  return { entry: { id, name, month, week, counts: cleanCounts, total, updatedAt: new Date().toISOString() } };
+}
+
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -114,38 +155,16 @@ app.get('/api/entries', async (req, res) => {
   }
 });
 
+app.get('/api/admin/verify', requireAdmin, (req, res) => {
+  res.json({ ok: true });
+});
+
 app.post('/api/entries', async (req, res) => {
-  const body = req.body || {};
-  const name = typeof body.name === 'string' ? body.name.trim() : '';
-  const month = body.month;
-  const week = parseInt(body.week, 10);
-  const counts = body.counts && typeof body.counts === 'object' ? body.counts : {};
-
-  if (!name) return res.status(400).json({ error: 'name is required' });
-  if (!MONTHS.includes(month)) return res.status(400).json({ error: 'month must be October or November' });
-  if (!Number.isInteger(week) || week < 1 || week > 5) return res.status(400).json({ error: 'week must be an integer 1-5' });
-
-  const cleanCounts = {};
-  let total = 0;
-  for (const key of Object.keys(POINTS)) {
-    const n = Math.max(0, parseInt(counts[key], 10) || 0);
-    cleanCounts[key] = n;
-    total += n * POINTS[key];
-  }
-
-  const id = `${slugify(name)}__${month.toLowerCase()}__week${week}`;
-  const entry = {
-    id,
-    name,
-    month,
-    week,
-    counts: cleanCounts,
-    total,
-    updatedAt: new Date().toISOString(),
-  };
+  const parsed = parseEntryBody(req.body || {});
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
 
   try {
-    const saved = await upsertEntry(entry);
+    const saved = await upsertEntry(parsed.entry);
     res.json(saved);
   } catch (e) {
     console.error(e);
@@ -153,7 +172,26 @@ app.post('/api/entries', async (req, res) => {
   }
 });
 
-app.delete('/api/entries/:id', async (req, res) => {
+// Admin-only: edit any entry, including fixing its name/month/week (which
+// changes its id) — regular players can only ever upsert their own id via
+// POST above, so this is the only way to correct someone else's record.
+app.put('/api/entries/:id', requireAdmin, async (req, res) => {
+  const parsed = parseEntryBody(req.body || {});
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+  try {
+    if (parsed.entry.id !== req.params.id) {
+      await removeEntry(req.params.id);
+    }
+    const saved = await upsertEntry(parsed.entry);
+    res.json(saved);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'failed to update entry' });
+  }
+});
+
+app.delete('/api/entries/:id', requireAdmin, async (req, res) => {
   try {
     const removed = await removeEntry(req.params.id);
     if (!removed) return res.status(404).json({ error: 'not found' });
