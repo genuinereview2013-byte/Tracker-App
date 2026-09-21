@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Festive Balance Challenge by Arathi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#20130a;
+    --ink-soft:#4a382c;
+    --parchment:#faf6ee;
+    --panel:#ffffff;
+    --line: rgba(32,19,10,0.14);
+    --marigold:#e0a52e;
+    --marigold-deep:#8a5c14;
+    --brick:#9c3820;
+    --plum:#4a2440;
+    --plum-deep:#341a2d;
+    --sage:#3f7a3f;
+    --sky:#2f5f68;
+    --shadow: 0 1px 0 rgba(32,19,10,0.06);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#f8efe3;
+      --ink-soft:#dcccb9;
+      --parchment:#1a1114;
+      --panel:#2c1e26;
+      --line: rgba(248,239,227,0.16);
+      --marigold:#eab857;
+      --marigold-deep:#f3c876;
+      --brick:#ea8467;
+      --sage:#8fd17d;
+      --sky:#8fd0d9;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#f8efe3;
+    --ink-soft:#dcccb9;
+    --parchment:#1a1114;
+    --panel:#2c1e26;
+    --line: rgba(248,239,227,0.16);
+    --marigold:#eab857;
+    --marigold-deep:#f3c876;
+    --brick:#ea8467;
+    --sage:#8fd17d;
+    --sky:#8fd0d9;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--parchment);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 80px;}
+
+  h1,h2,h3{font-family:'Fraunces',Georgia,serif;font-weight:700;margin:0;color:var(--ink);}
+
+  /* ---- Hero ---- */
+  .hero{
+    position:relative;
+    padding:30px 26px 26px;
+    border-radius:16px;
+    background:linear-gradient(155deg, var(--plum-deep), var(--plum) 120%);
+    color:#fbf1e2;
+    overflow:hidden;
+  }
+  :root[data-theme="dark"] .hero, @media (prefers-color-scheme: dark){ .hero{color:#fbf1e2;} }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: radial-gradient(circle at 12% 18%, rgba(226,161,46,0.35), transparent 40%),
+                       radial-gradient(circle at 90% 85%, rgba(168,63,34,0.35), transparent 45%);
+    pointer-events:none;
+  }
+  .hero-eyebrow{
+    position:relative;
+    font-size:0.82rem;
+    letter-spacing:0.02em;
+    color:#f0d9a8;
+    margin-bottom:10px;
+  }
+  .hero h1{position:relative; font-size:2.05rem; line-height:1.12; color:#fdf6e8;}
+  .hero .tagline{
+    position:relative;
+    font-family:'Fraunces',serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:1.15rem;
+    color:var(--marigold);
+    margin-top:8px;
+  }
+  .hero p.desc{position:relative; color:#eaddcb; margin-top:14px; max-width:56ch; font-size:0.97rem;}
+  .hero .dates{
+    position:relative;
+    display:inline-flex; gap:8px; align-items:baseline;
+    margin-top:16px;
+    font-size:0.85rem;
+    color:#f0d9a8;
+    border-top:1px dashed rgba(240,217,168,0.4);
+    padding-top:12px;
+  }
+
+  /* ---- Sections ---- */
+  section{margin-top:34px;}
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px;}
+  .section-head h2{font-size:1.3rem;}
+  .section-sub{color:var(--ink-soft); font-size:0.88rem; margin-top:2px;}
+
+  /* ---- Pillars ---- */
+  .pillars{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media (max-width:480px){ .pillars{grid-template-columns:1fr;} }
+  .pillar{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:13px 14px;
+  }
+  .pillar .num{
+    font-family:'Fraunces',serif; font-weight:700; font-size:0.82rem;
+    color:var(--marigold-deep); margin-bottom:3px;
+  }
+  .pillar .name{font-weight:600; font-size:0.95rem;}
+  .pillar .desc{color:var(--ink-soft); font-size:0.85rem; margin-top:3px;}
+
+  .rescue-box{
+    margin-top:14px;
+    background:linear-gradient(120deg, rgba(226,161,46,0.14), rgba(168,63,34,0.10));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:15px 16px;
+  }
+  .rescue-box .name{font-weight:600; font-family:'Fraunces',serif; font-size:1.02rem; margin-bottom:4px;}
+  .rescue-box .desc{color:var(--ink-soft); font-size:0.88rem; margin-bottom:8px;}
+  .rescue-opts{display:flex; flex-wrap:wrap; gap:8px;}
+  .rescue-opts span{
+    font-size:0.8rem; padding:4px 10px; border-radius:20px;
+    background:var(--panel); border:1px solid var(--line); color:var(--ink);
+  }
+
+  /* ---- points table ---- */
+  table.points{width:100%; border-collapse:collapse; font-size:0.88rem; margin-top:14px;}
+  table.points th, table.points td{ text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+  table.points th{color:var(--ink-soft); font-weight:600; font-size:0.82rem; text-transform:none;}
+  table.points td.pts{text-align:right; font-variant-numeric:tabular-nums; font-weight:600; color:var(--brick);}
+  .goal-line{margin-top:10px; font-size:0.85rem; color:var(--ink-soft);}
+  .goal-line b{color:var(--ink);}
+
+  /* ---- Log form ---- */
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+  }
+  label.field-label{display:block; font-size:0.8rem; color:var(--ink-soft); margin-bottom:5px; font-weight:600;}
+  .row2{display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:10px; margin-bottom:16px;}
+  @media (max-width:520px){ .row2{grid-template-columns:1fr;} }
+  input[type=text], select{
+    width:100%;
+    font:inherit;
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--parchment);
+    color:var(--ink);
+  }
+  input[type=text]:focus, select:focus, button:focus-visible{
+    outline:2px solid var(--marigold-deep); outline-offset:1px;
+  }
+
+  .activity-row{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .activity-row:last-of-type{border-bottom:none;}
+  .activity-info .a-name{font-weight:600; font-size:0.92rem;}
+  .activity-info .a-pts{font-size:0.82rem; color:var(--brick); font-weight:600;}
+  .counter{display:flex; align-items:center; gap:10px;}
+  .counter button{
+    width:30px; height:30px; border-radius:50%;
+    border:1px solid var(--line); background:var(--parchment); color:var(--ink);
+    font-size:1rem; line-height:1; cursor:pointer;
+  }
+  .counter button:hover{background:var(--marigold); color:#2b1710; border-color:var(--marigold);}
+  .counter .n{min-width:18px; text-align:center; font-variant-numeric:tabular-nums; font-weight:600;}
+
+  .total-bar{margin-top:16px;}
+  .total-row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+  .total-row .label{font-size:0.85rem; color:var(--ink-soft);}
+  .total-row .value{font-family:'Fraunces',serif; font-size:1.5rem; font-weight:700; color:var(--brick);}
+  .bar-track{height:8px; border-radius:6px; background:var(--line); overflow:hidden;}
+  .bar-fill{height:100%; background:linear-gradient(90deg, var(--marigold-deep), var(--marigold)); transition:width .3s ease;}
+
+  .save-btn{
+    margin-top:18px;
+    width:100%;
+    padding:12px 16px;
+    border:none; border-radius:9px;
+    background:var(--brick); color:#fff2e6;
+    font-weight:600; font-size:0.95rem;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  .save-btn:hover{background:var(--marigold-deep); color:var(--parchment);}
+  .save-btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .save-msg{margin-top:10px; font-size:0.83rem; color:var(--sage); min-height:1.2em;}
+
+  /* ---- Leaderboard ---- */
+  .tabs{display:flex; gap:6px; margin-bottom:14px;}
+  .tab{
+    padding:7px 16px; border-radius:20px; border:1px solid var(--line);
+    background:var(--panel); color:var(--ink-soft); font-size:0.85rem; font-weight:600;
+    cursor:pointer;
+  }
+  .tab.active{background:var(--plum); color:#fbf1e2; border-color:var(--plum);}
+
+  .lb-row{
+    display:flex; align-items:center; gap:12px;
+    padding:12px 14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    margin-bottom:8px;
+  }
+  .lb-rank{
+    width:26px; text-align:center; font-family:'Fraunces',serif; font-weight:700; color:var(--ink-soft); font-size:0.95rem;
+  }
+  .lb-row.top .lb-rank{color:var(--marigold-deep);}
+  .lb-name{flex:1; font-weight:600; font-size:0.94rem;}
+  .lb-sub{font-size:0.8rem; color:var(--ink-soft); font-weight:400; margin-top:1px;}
+  .lb-pts{font-family:'Fraunces',serif; font-weight:700; font-size:1.15rem; color:var(--brick);}
+  .lb-empty{color:var(--ink-soft); font-size:0.9rem; padding:16px 4px;}
+
+  details.mine{margin-top:14px;}
+  details.mine summary{cursor:pointer; font-size:0.85rem; color:var(--ink-soft); font-weight:600;}
+  .mine-item{font-size:0.85rem; padding:7px 0; border-bottom:1px solid var(--line); display:flex; justify-content:space-between;}
+  .mine-item:last-child{border-bottom:none;}
+
+  footer{margin-top:40px; text-align:center; color:var(--ink-soft); font-size:0.82rem;}
+  .status-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--sage); margin-right:5px;}
+  .status-dot.off{background:var(--brick);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-eyebrow">TEAM CHALLENGE · OCT&nbsp;–&nbsp;NOV</div>
+    <h1>The Festive Balance Challenge</h1>
+    <div class="tagline">Move. Nourish. Indulge. Repeat.</div>
+    <p class="desc">The festive season is here, and so is our challenge. Enjoy every bit of it without pausing on your health. Join for one month or both — log your points and the leaderboard updates for everyone, automatically.</p>
+    <div class="dates">🎉 Runs October through November · Winners announced each month</div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <h2>The seven pillars</h2>
+    </div>
+    <div class="pillars" id="pillars"></div>
+
+    <div class="rescue-box">
+      <div class="name">🆘 The 10-Minute Rescue</div>
+      <div class="desc">When the festive season throws everything sideways and you can't check off the list, cash in a rescue card. Pick one:</div>
+      <div class="rescue-opts">
+        <span>10-min walk</span><span>10-min mobility</span><span>10-min pilates</span><span>10-min breath work</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>How you earn points</h2></div>
+    <table class="points" id="pointsTable"></table>
+    <div class="goal-line">Weekly goal: <b>10–12 points</b>. Bring your squats, steps and sweets 🤩</div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Log your week</h2>
+      <span class="section-sub" id="statusLabel"><span class="status-dot" id="statusDot"></span><span id="statusText">connecting…</span></span>
+    </div>
+    <div class="card">
+      <div class="row2">
+        <div>
+          <label class="field-label" for="nameInput">Your name</label>
+          <input type="text" id="nameInput" placeholder="e.g. Priya">
+        </div>
+        <div>
+          <label class="field-label" for="monthSelect">Month</label>
+          <select id="monthSelect">
+            <option value="October">October</option>
+            <option value="November">November</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label" for="weekSelect">Week</label>
+          <select id="weekSelect">
+            <option value="1">Week 1</option>
+            <option value="2">Week 2</option>
+            <option value="3">Week 3</option>
+            <option value="4">Week 4</option>
+            <option value="5">Week 5</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="activityRows"></div>
+
+      <div class="total-bar">
+        <div class="total-row">
+          <span class="label">This week's points</span>
+          <span class="value" id="totalValue">0</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="totalBar" style="width:0%"></div></div>
+      </div>
+
+      <button class="save-btn" id="saveBtn">Save this week</button>
+      <div class="save-msg" id="saveMsg"></div>
+
+      <details class="mine" id="mineDetails">
+        <summary>My logged weeks</summary>
+        <div id="mineList"></div>
+      </details>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Leaderboard</h2></div>
+    <div class="section-sub" style="margin-bottom:14px;">Everyone who logs points on this page shows up here, live.</div>
+    <div class="tabs">
+      <button class="tab active" data-month="October" id="tabOct">October</button>
+      <button class="tab" data-month="November" id="tabNov">November</button>
+    </div>
+    <div id="leaderboard"></div>
+  </section>
+
+  <footer>Self-hosted for your team · data lives in your Postgres database</footer>
+</div>
+
+<script>
+const ACTIVITIES = [
+  {id:'strength', label:'Strength workout', points:2},
+  {id:'run',      label:'Run / Pilates / other workout', points:2},
+  {id:'walk',     label:'30-min walk', points:1},
+  {id:'veg',      label:'Veggie / fibre-rich meal', points:1},
+  {id:'sleep',    label:'7+ hours sleep', points:1},
+  {id:'hydrate',  label:'Hydration target (3L)', points:1},
+  {id:'indulge',  label:'Intentional indulgence', points:1},
+  {id:'rescue',   label:'10-min rescue', points:1},
+  {id:'protein',  label:'Protein meal', points:1},
+];
+
+const PILLARS = [
+  {num:'01 · MOVE', name:'Movement target', desc:'3 movement sessions/week — strength, Pilates, running, hiking, yoga, dancing, a long walk. Anything counts.'},
+  {num:'02 · BUILD', name:'Strength', desc:'2 strength sessions/week.'},
+  {num:'03 · FIBRE', name:'Colourful veg', desc:'2–3 colourful vegetables at two meals a day.'},
+  {num:'04 · HYDRATE', name:'Water', desc:'At least 3 litres of water every day.'},
+  {num:'05 · SLEEP', name:'Rest', desc:'6–7+ hours on at least 3 nights/week.'},
+  {num:'06 · INDULGE', name:'Without guilt', desc:'1–2 intentional indulgences/week. Enjoy, photograph, post — no payback needed.'},
+  {num:'07 · PROTEIN', name:'Protein meal', desc:'Add one substantial protein source to two meals a day.'},
+];
+
+// ---------- render static content ----------
+const pillarsEl = document.getElementById('pillars');
+PILLARS.forEach(p=>{
+  const d = document.createElement('div');
+  d.className = 'pillar';
+  d.innerHTML = `<div class="num">${p.num}</div><div class="name">${p.name}</div><div class="desc">${p.desc}</div>`;
+  pillarsEl.appendChild(d);
+});
+
+const ptsTable = document.getElementById('pointsTable');
+ptsTable.innerHTML = `<tr><th>Activity</th><th style="text-align:right">Points</th></tr>` +
+  ACTIVITIES.map(a=>`<tr><td>${a.label}</td><td class="pts">${a.points}</td></tr>`).join('');
+
+const rowsEl = document.getElementById('activityRows');
+ACTIVITIES.forEach(a=>{
+  const row = document.createElement('div');
+  row.className = 'activity-row';
+  row.innerHTML = `
+    <div class="activity-info">
+      <div class="a-name">${a.label}</div>
+      <div class="a-pts">${a.points} pt${a.points>1?'s':''} each</div>
+    </div>
+    <div class="counter">
+      <button type="button" data-act="${a.id}" data-dir="-1" aria-label="decrease">−</button>
+      <span class="n" id="n_${a.id}">0</span>
+      <button type="button" data-act="${a.id}" data-dir="1" aria-label="increase">+</button>
+    </div>`;
+  rowsEl.appendChild(row);
+});
+
+// ---------- state ----------
+let counts = {};
+ACTIVITIES.forEach(a=>counts[a.id]=0);
+
+function slugify(s){
+  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'anon';
+}
+function currentDocId(){
+  const name = document.getElementById('nameInput').value;
+  const month = document.getElementById('monthSelect').value;
+  const week = document.getElementById('weekSelect').value;
+  return `${slugify(name)}__${month.toLowerCase()}__week${week}`;
+}
+function computeTotal(){
+  return ACTIVITIES.reduce((sum,a)=> sum + counts[a.id]*a.points, 0);
+}
+function renderTotal(){
+  const total = computeTotal();
+  document.getElementById('totalValue').textContent = total;
+  const pct = Math.max(0, Math.min(100, (total/12)*100));
+  document.getElementById('totalBar').style.width = pct + '%';
+}
+function renderCounts(){
+  ACTIVITIES.forEach(a=>{
+    document.getElementById('n_'+a.id).textContent = counts[a.id];
+  });
+  renderTotal();
+}
+
+document.getElementById('activityRows').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-act]');
+  if(!btn) return;
+  const id = btn.getAttribute('data-act');
+  const dir = parseInt(btn.getAttribute('data-dir'),10);
+  counts[id] = Math.max(0, counts[id] + dir);
+  renderCounts();
+});
+
+// ---------- name memory (per-browser convenience only) ----------
+const nameInput = document.getElementById('nameInput');
+try{
+  const savedName = localStorage.getItem('fbc_name');
+  if(savedName) nameInput.value = savedName;
+}catch(e){}
+nameInput.addEventListener('change', ()=>{
+  try{ localStorage.setItem('fbc_name', nameInput.value); }catch(e){}
+  loadExistingWeek();
+  renderMine();
+});
+
+document.getElementById('monthSelect').addEventListener('change', ()=>{ loadExistingWeek(); renderMine(); renderLeaderboard(); });
+document.getElementById('weekSelect').addEventListener('change', loadExistingWeek);
+
+// ---------- backend sync ----------
+let allEntries = []; // cached copy of every entry on the server
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+
+function setStatus(state, text){
+  statusDot.className = 'status-dot' + (state === 'off' ? ' off' : '');
+  statusText.textContent = text;
+}
+
+async function fetchEntries(){
+  try{
+    const res = await fetch('/api/entries');
+    if(!res.ok) throw new Error('bad response');
+    allEntries = await res.json();
+    setStatus('on', 'connected');
+    return true;
+  }catch(e){
+    setStatus('off', 'can\'t reach server — is it running?');
+    return false;
+  }
+}
+
+function loadExistingWeek(){
+  const name = nameInput.value.trim();
+  const id = currentDocId();
+  const existing = name ? allEntries.find(e=>e.id===id) : null;
+  ACTIVITIES.forEach(a=>{ counts[a.id] = (existing && existing.counts && existing.counts[a.id]) || 0; });
+  renderCounts();
+}
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const name = nameInput.value.trim();
+  const msg = document.getElementById('saveMsg');
+  const btn = document.getElementById('saveBtn');
+  if(!name){
+    msg.textContent = 'Add your name first.';
+    msg.style.color = 'var(--brick)';
+    return;
+  }
+  const month = document.getElementById('monthSelect').value;
+  const week = parseInt(document.getElementById('weekSelect').value, 10);
+  btn.disabled = true;
+  try{
+    const res = await fetch('/api/entries', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name, month, week, counts })
+    });
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.error || 'save failed');
+    }
+    const saved = await res.json();
+    msg.textContent = `Saved — ${saved.total} points logged for ${month}, Week ${week}.`;
+    msg.style.color = 'var(--sage)';
+    await fetchEntries();
+    renderLeaderboard();
+    renderMine();
+  }catch(e){
+    msg.textContent = 'Could not save — check the server is running and reachable.';
+    msg.style.color = 'var(--brick)';
+  }
+  btn.disabled = false;
+});
+
+// ---------- leaderboard ----------
+let activeMonth = 'October';
+document.getElementById('tabOct').addEventListener('click', ()=>setMonth('October'));
+document.getElementById('tabNov').addEventListener('click', ()=>setMonth('November'));
+function setMonth(m){
+  activeMonth = m;
+  document.getElementById('tabOct').classList.toggle('active', m==='October');
+  document.getElementById('tabNov').classList.toggle('active', m==='November');
+  renderLeaderboard();
+}
+
+function renderLeaderboard(){
+  const el = document.getElementById('leaderboard');
+  const monthEntries = allEntries.filter(e=>e.month===activeMonth);
+  if(monthEntries.length===0){
+    el.innerHTML = '<div class="lb-empty">No points logged yet for '+activeMonth+'. Be the first!</div>';
+    return;
+  }
+  const byName = {};
+  monthEntries.forEach(e=>{
+    const key = (e.name||'—').trim();
+    if(!byName[key]) byName[key] = {name:key, total:0, weeks:0};
+    byName[key].total += (e.total||0);
+    byName[key].weeks += 1;
+  });
+  const ranked = Object.values(byName).sort((a,b)=>b.total-a.total);
+  el.innerHTML = ranked.map((r,i)=>{
+    const medal = i===0?'🏆':i===1?'🥈':i===2?'🥉':(i+1);
+    return `<div class="lb-row ${i===0?'top':''}">
+      <div class="lb-rank">${medal}</div>
+      <div class="lb-name">${escapeHtml(r.name)}<div class="lb-sub">${r.weeks} week${r.weeks>1?'s':''} logged</div></div>
+      <div class="lb-pts">${r.total}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMine(){
+  const name = nameInput.value.trim();
+  const list = document.getElementById('mineList');
+  if(!name){ list.innerHTML = '<div class="mine-item">Add your name to see your history.</div>'; return; }
+  const mine = allEntries.filter(e=> (e.name||'').trim().toLowerCase() === name.toLowerCase())
+                          .sort((a,b)=> (a.month+a.week) < (b.month+b.week) ? -1 : 1);
+  if(mine.length===0){ list.innerHTML = '<div class="mine-item">No weeks logged yet.</div>'; return; }
+  list.innerHTML = mine.map(e=>`<div class="mine-item"><span>${e.month} · Week ${e.week}</span><span>${e.total} pts</span></div>`).join('');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function init(){
+  renderCounts();
+  const ok = await fetchEntries();
+  if(ok){
+    loadExistingWeek();
+    renderLeaderboard();
+    renderMine();
+  }
+}
+init();
+
+// light polling so the leaderboard stays fresh if a teammate saves elsewhere
+setInterval(async ()=>{
+  const ok = await fetchEntries();
+  if(ok){ renderLeaderboard(); renderMine(); }
+}, 15000);
+</script>
+</body>
+</html>
