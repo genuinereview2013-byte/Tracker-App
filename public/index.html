@@ -269,6 +269,40 @@
   .host .host-label{font-size:0.72rem; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.04em;}
   .host .host-name{font-weight:600; font-size:0.9rem; color:var(--ink);}
   .host .host-title{font-size:0.78rem; color:var(--ink-soft);}
+
+  /* ---- Admin ---- */
+  input[type=password]{
+    width:100%; font:inherit; padding:9px 10px; border-radius:8px;
+    border:1px solid var(--line); background:var(--parchment); color:var(--ink);
+  }
+  .btn{
+    padding:9px 16px; border-radius:9px; border:1px solid var(--line);
+    background:var(--parchment); color:var(--ink);
+    font-weight:600; font-size:0.85rem; font-family:'Inter',sans-serif; cursor:pointer;
+    white-space:nowrap;
+  }
+  .btn:hover{border-color:var(--brick); color:var(--brick);}
+  .btn-danger{border-color:var(--brick); color:var(--brick);}
+  .btn-danger:hover{background:var(--brick); color:#fff2e6;}
+  .admin-msg{margin-top:10px; font-size:0.83rem; color:var(--brick); min-height:1.2em;}
+  .admin-msg.ok{color:var(--sage);}
+  .admin-toprow{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;}
+  .admin-row{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:10px 12px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px;
+  }
+  .admin-row .ar-info{flex:1; min-width:150px;}
+  .admin-row .ar-name{font-weight:600; font-size:0.9rem;}
+  .admin-row .ar-meta{font-size:0.78rem; color:var(--ink-soft); margin-top:1px;}
+  .admin-row .ar-total{font-weight:700; color:var(--brick); font-family:'Fraunces',serif; font-size:1.05rem;}
+  .admin-actions{display:flex; gap:6px;}
+  .admin-actions .btn{padding:6px 12px; font-size:0.8rem;}
+  .edit-banner{
+    display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+    background:linear-gradient(120deg, rgba(224,165,46,0.16), rgba(156,56,32,0.10));
+    border:1px solid var(--line); border-radius:10px;
+    padding:10px 14px; margin-bottom:16px; font-size:0.85rem;
+  }
 </style>
 </head>
 <body>
@@ -321,6 +355,10 @@
       <span class="section-sub" id="statusLabel"><span class="status-dot" id="statusDot"></span><span id="statusText">connecting…</span></span>
     </div>
     <div class="card">
+      <div class="edit-banner" id="editBanner" style="display:none;">
+        <span id="editBannerText"></span>
+        <button class="btn" id="cancelEditBtn">Cancel edit</button>
+      </div>
       <div class="row2">
         <div>
           <label class="field-label" for="nameInput">Your name</label>
@@ -373,6 +411,27 @@
       <button class="tab" data-month="November" id="tabNov">November</button>
     </div>
     <div id="leaderboard"></div>
+  </section>
+
+  <section id="adminSection">
+    <div class="section-head"><h2>Admin</h2></div>
+    <div class="card" id="adminLoginCard">
+      <div class="field-label" style="margin-bottom:6px;">Admin password</div>
+      <div class="section-sub" style="margin-bottom:10px;">Only needed to edit or delete someone else's entry — everyone can still log their own points above without this.</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input type="password" id="adminPasswordInput" placeholder="Admin password" style="flex:1; min-width:160px;">
+        <button class="btn" id="adminLoginBtn">Unlock</button>
+      </div>
+      <div class="admin-msg" id="adminLoginMsg"></div>
+    </div>
+
+    <div class="card" id="adminPanel" style="display:none;">
+      <div class="admin-toprow">
+        <div class="field-label" style="margin:0;">All entries</div>
+        <button class="btn" id="adminLogoutBtn">Log out of admin</button>
+      </div>
+      <div id="adminList"></div>
+    </div>
   </section>
 
   <footer>Self-hosted for your team · data lives in your Postgres database</footer>
@@ -528,21 +587,33 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   const week = parseInt(document.getElementById('weekSelect').value, 10);
   btn.disabled = true;
   try{
-    const res = await fetch('/api/entries', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ name, month, week, counts })
-    });
+    let res;
+    if(adminEditingId){
+      res = await fetch('/api/entries/' + encodeURIComponent(adminEditingId), {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json', 'x-admin-password': adminPassword},
+        body: JSON.stringify({ name, month, week, counts })
+      });
+    } else {
+      res = await fetch('/api/entries', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name, month, week, counts })
+      });
+    }
     if(!res.ok){
       const err = await res.json().catch(()=>({}));
       throw new Error(err.error || 'save failed');
     }
     const saved = await res.json();
+    const wasAdminEdit = !!adminEditingId;
     msg.textContent = `Saved — ${saved.total} points logged for ${month}, Week ${week}.`;
     msg.style.color = 'var(--sage)';
+    if(wasAdminEdit) exitEditMode();
     await fetchEntries();
     renderLeaderboard();
     renderMine();
+    if(adminUnlocked) renderAdminList();
   }catch(e){
     msg.textContent = 'Could not save — check the server is running and reachable.';
     msg.style.color = 'var(--brick)';
@@ -600,6 +671,150 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// ---------- admin ----------
+let adminPassword = '';
+let adminUnlocked = false;
+let adminEditingId = null; // set while the log form is editing someone else's entry
+
+const adminLoginCard = document.getElementById('adminLoginCard');
+const adminPanel = document.getElementById('adminPanel');
+const adminLoginMsg = document.getElementById('adminLoginMsg');
+const editBanner = document.getElementById('editBanner');
+const editBannerText = document.getElementById('editBannerText');
+
+try{
+  const stored = sessionStorage.getItem('fbc_admin_pw');
+  if(stored) adminPassword = stored;
+}catch(e){}
+
+async function verifyAdmin(password){
+  const res = await fetch('/api/admin/verify', { headers: { 'x-admin-password': password } });
+  return res.ok;
+}
+
+function showAdminPanel(){
+  adminUnlocked = true;
+  adminLoginCard.style.display = 'none';
+  adminPanel.style.display = 'block';
+  renderAdminList();
+}
+function showAdminLogin(){
+  adminUnlocked = false;
+  adminPanel.style.display = 'none';
+  adminLoginCard.style.display = 'block';
+}
+
+document.getElementById('adminLoginBtn').addEventListener('click', async ()=>{
+  const input = document.getElementById('adminPasswordInput');
+  const pw = input.value;
+  if(!pw){ adminLoginMsg.textContent = 'Enter the admin password.'; adminLoginMsg.className = 'admin-msg'; return; }
+  adminLoginMsg.textContent = 'Checking…';
+  adminLoginMsg.className = 'admin-msg';
+  const ok = await verifyAdmin(pw);
+  if(ok){
+    adminPassword = pw;
+    try{ sessionStorage.setItem('fbc_admin_pw', pw); }catch(e){}
+    input.value = '';
+    adminLoginMsg.textContent = '';
+    showAdminPanel();
+  } else {
+    adminLoginMsg.textContent = 'Incorrect password (or admin access isn\'t configured on the server).';
+    adminLoginMsg.className = 'admin-msg';
+  }
+});
+
+document.getElementById('adminLogoutBtn').addEventListener('click', ()=>{
+  adminPassword = '';
+  try{ sessionStorage.removeItem('fbc_admin_pw'); }catch(e){}
+  exitEditMode();
+  showAdminLogin();
+});
+
+function renderAdminList(){
+  const list = document.getElementById('adminList');
+  if(allEntries.length === 0){
+    list.innerHTML = '<div class="lb-empty">No entries logged yet.</div>';
+    return;
+  }
+  const sorted = [...allEntries].sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
+  list.innerHTML = sorted.map(e => `
+    <div class="admin-row">
+      <div class="ar-info">
+        <div class="ar-name">${escapeHtml(e.name)}</div>
+        <div class="ar-meta">${e.month} · Week ${e.week} · updated ${new Date(e.updatedAt).toLocaleString()}</div>
+      </div>
+      <div class="ar-total">${e.total}</div>
+      <div class="admin-actions">
+        <button class="btn" data-edit="${escapeHtml(e.id)}">Edit</button>
+        <button class="btn btn-danger" data-delete="${escapeHtml(e.id)}">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+document.getElementById('adminList').addEventListener('click', async (e)=>{
+  const editId = e.target.getAttribute('data-edit');
+  const deleteId = e.target.getAttribute('data-delete');
+
+  if(editId){
+    const entry = allEntries.find(x=>x.id===editId);
+    if(!entry) return;
+    enterEditMode(entry);
+    return;
+  }
+
+  if(deleteId){
+    const entry = allEntries.find(x=>x.id===deleteId);
+    const label = entry ? `${entry.name} — ${entry.month} Week ${entry.week}` : deleteId;
+    if(!confirm(`Delete this entry?\n\n${label}\n\nThis can't be undone.`)) return;
+    try{
+      const res = await fetch('/api/entries/' + encodeURIComponent(deleteId), {
+        method: 'DELETE',
+        headers: { 'x-admin-password': adminPassword }
+      });
+      if(!res.ok){
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'delete failed');
+      }
+      if(adminEditingId === deleteId) exitEditMode();
+      await fetchEntries();
+      renderLeaderboard();
+      renderMine();
+      renderAdminList();
+    }catch(err){
+      alert('Could not delete: ' + err.message);
+    }
+  }
+});
+
+function enterEditMode(entry){
+  adminEditingId = entry.id;
+  nameInput.value = entry.name;
+  document.getElementById('monthSelect').value = entry.month;
+  document.getElementById('weekSelect').value = String(entry.week);
+  ACTIVITIES.forEach(a=>{ counts[a.id] = (entry.counts && entry.counts[a.id]) || 0; });
+  renderCounts();
+  editBannerText.textContent = `Admin editing ${entry.name}'s ${entry.month} Week ${entry.week} entry.`;
+  editBanner.style.display = 'flex';
+  document.getElementById('saveBtn').textContent = 'Save changes';
+  editBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function exitEditMode(){
+  adminEditingId = null;
+  editBanner.style.display = 'none';
+  document.getElementById('saveBtn').textContent = 'Save this week';
+  const savedName = (()=>{ try{ return localStorage.getItem('fbc_name') || ''; }catch(e){ return ''; } })();
+  nameInput.value = savedName;
+  loadExistingWeek();
+}
+document.getElementById('cancelEditBtn').addEventListener('click', exitEditMode);
+
+async function initAdmin(){
+  if(!adminPassword) return;
+  const ok = await verifyAdmin(adminPassword);
+  if(ok) showAdminPanel();
+  else { adminPassword = ''; try{ sessionStorage.removeItem('fbc_admin_pw'); }catch(e){} }
+}
+
 async function init(){
   renderCounts();
   const ok = await fetchEntries();
@@ -607,6 +822,7 @@ async function init(){
     loadExistingWeek();
     renderLeaderboard();
     renderMine();
+    await initAdmin();
   }
 }
 init();
@@ -614,7 +830,11 @@ init();
 // light polling so the leaderboard stays fresh if a teammate saves elsewhere
 setInterval(async ()=>{
   const ok = await fetchEntries();
-  if(ok){ renderLeaderboard(); renderMine(); }
+  if(ok){
+    renderLeaderboard();
+    renderMine();
+    if(adminUnlocked) renderAdminList();
+  }
 }, 15000);
 </script>
 </body>
