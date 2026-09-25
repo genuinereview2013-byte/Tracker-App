@@ -303,6 +303,28 @@
     border:1px solid var(--line); border-radius:10px;
     padding:10px 14px; margin-bottom:16px; font-size:0.85rem;
   }
+
+  /* ---- Challenge status banner ---- */
+  .status-banner{
+    display:flex; align-items:center; gap:10px;
+    margin-top:16px;
+    padding:13px 18px;
+    border-radius:12px;
+    background:linear-gradient(120deg, rgba(224,165,46,0.22), rgba(156,56,32,0.15));
+    border:1px solid var(--line);
+    font-weight:600; font-size:0.92rem;
+  }
+  .status-banner .dot{
+    width:9px; height:9px; border-radius:50%; flex:none;
+    background:var(--sage);
+  }
+  .status-banner .dot.pulse{ animation: statusPulse 1.6s ease-in-out infinite; }
+  .status-banner .dot.ended{ background:var(--ink-soft); }
+  .status-banner b{ color:var(--brick); }
+  @keyframes statusPulse{
+    0%, 100% { box-shadow: 0 0 0 0 rgba(63,122,63,0.5); }
+    50% { box-shadow: 0 0 0 6px rgba(63,122,63,0); }
+  }
 </style>
 </head>
 <body>
@@ -326,6 +348,11 @@
     <div class="tagline">Move. Nourish. Indulge. Repeat.</div>
     <p class="desc">The festive season is here, and so is our challenge. Enjoy every bit of it without pausing on your health. Join for one month or both — log your points and the leaderboard updates for everyone, automatically.</p>
     <div class="dates">🎉 Runs October through November · Winners announced each month</div>
+  </div>
+
+  <div class="status-banner" id="statusBanner">
+    <span class="dot" id="statusBannerDot"></span>
+    <span id="statusBannerText">Loading challenge status…</span>
   </div>
 
   <section>
@@ -654,16 +681,17 @@ function renderLeaderboard(){
   const byName = {};
   monthEntries.forEach(e=>{
     const key = (e.name||'—').trim();
-    if(!byName[key]) byName[key] = {name:key, total:0, days:0};
+    if(!byName[key]) byName[key] = {name:key, total:0, days:0, lastDate:null};
     byName[key].total += (e.total||0);
     byName[key].days += 1;
+    if(!byName[key].lastDate || e.date > byName[key].lastDate) byName[key].lastDate = e.date;
   });
   const ranked = Object.values(byName).sort((a,b)=>b.total-a.total);
   el.innerHTML = ranked.map((r,i)=>{
     const medal = i===0?'🏆':i===1?'🥈':i===2?'🥉':(i+1);
     return `<div class="lb-row ${i===0?'top':''}">
       <div class="lb-rank">${medal}</div>
-      <div class="lb-name">${escapeHtml(r.name)}<div class="lb-sub">${r.days} day${r.days>1?'s':''} logged</div></div>
+      <div class="lb-name">${escapeHtml(r.name)}<div class="lb-sub">${r.days} day${r.days>1?'s':''} logged · last logged ${formatDate(r.lastDate)}</div></div>
       <div class="lb-pts">${r.total}</div>
     </div>`;
   }).join('');
@@ -827,8 +855,50 @@ async function initAdmin(){
   else { adminPassword = ''; try{ sessionStorage.removeItem('fbc_admin_pw'); }catch(e){} }
 }
 
+// ---------- challenge status banner ----------
+function renderChallengeStatus(){
+  const textEl = document.getElementById('statusBannerText');
+  const dotEl = document.getElementById('statusBannerDot');
+  if(!textEl || !dotEl) return;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const octStart = new Date(year, 9, 1);
+  const octEnd = new Date(year, 9, 31);
+  const novStart = new Date(year, 10, 1);
+  const novEnd = new Date(year, 10, 30);
+  const ONE_DAY = 86400000;
+  const daysBetween = (a,b) => Math.round((b - a) / ONE_DAY);
+
+  let html, dotClass;
+  if(today < octStart){
+    const d = daysBetween(today, octStart);
+    html = `🎉 Challenge starts in <b>${d} day${d!==1?'s':''}</b> — see you October 1st!`;
+    dotClass = '';
+  } else if(today <= octEnd){
+    const d = daysBetween(today, octEnd) + 1;
+    html = `🔥 Challenge is <b>ON</b> — <b>${d} day${d!==1?'s':''}</b> left to climb the October leaderboard`;
+    dotClass = 'pulse';
+  } else if(today < novStart){
+    const d = daysBetween(today, novStart);
+    html = `🎉 The November leg starts in <b>${d} day${d!==1?'s':''}</b>`;
+    dotClass = '';
+  } else if(today <= novEnd){
+    const d = daysBetween(today, novEnd) + 1;
+    html = `🔥 Challenge is <b>ON</b> — <b>${d} day${d!==1?'s':''}</b> left to climb the November leaderboard`;
+    dotClass = 'pulse';
+  } else {
+    html = `🏁 The Festive Balance Challenge has wrapped for this year — thanks for playing!`;
+    dotClass = 'ended';
+  }
+  textEl.innerHTML = html;
+  dotEl.className = 'dot' + (dotClass ? ' ' + dotClass : '');
+}
+
 async function init(){
   renderCounts();
+  renderChallengeStatus();
   const ok = await fetchEntries();
   if(ok){
     loadExistingDay();
@@ -848,6 +918,9 @@ setInterval(async ()=>{
     if(adminUnlocked) renderAdminList();
   }
 }, 15000);
+
+// keep the countdown accurate if the tab is left open past midnight
+setInterval(renderChallengeStatus, 60000);
 </script>
 </body>
 </html>
