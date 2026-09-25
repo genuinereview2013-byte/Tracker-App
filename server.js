@@ -46,10 +46,24 @@ const POINTS = {
   rescue: 1,
   protein: 1,
 };
-const MONTHS = ['October', 'November'];
+
+const MONTH_NAMES = { 10: 'October', 11: 'November' };
 
 function slugify(s) {
   return String(s).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'anon';
+}
+
+// Parses a 'YYYY-MM-DD' string without any timezone shifting, and returns
+// { valid, monthNum, monthName } or { valid: false }.
+function parseDateString(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return { valid: false };
+  const [y, m, d] = s.split('-').map(Number);
+  const check = new Date(Date.UTC(y, m - 1, d));
+  const isRealDate = check.getUTCFullYear() === y && check.getUTCMonth() === m - 1 && check.getUTCDate() === d;
+  if (!isRealDate) return { valid: false };
+  const monthName = MONTH_NAMES[m];
+  if (!monthName) return { valid: false, reason: 'date must be in October or November' };
+  return { valid: true, monthNum: m, monthName };
 }
 
 // ---------- database ----------
@@ -61,11 +75,15 @@ const pool = new Pool({
 });
 
 function rowToEntry(row) {
+  const d = row.entry_date;
+  const dateStr = d instanceof Date
+    ? d.toISOString().slice(0, 10)
+    : String(d); // pg can return DATE columns as 'YYYY-MM-DD' strings already
   return {
     id: row.id,
     name: row.name,
+    date: dateStr,
     month: row.month,
-    week: row.week,
     counts: row.counts,
     total: row.total,
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
@@ -73,23 +91,23 @@ function rowToEntry(row) {
 }
 
 async function getAllEntries() {
-  const { rows } = await pool.query('SELECT * FROM entries ORDER BY updated_at DESC');
+  const { rows } = await pool.query('SELECT * FROM entries ORDER BY entry_date DESC');
   return rows.map(rowToEntry);
 }
 
 async function upsertEntry(entry) {
   const { rows } = await pool.query(
-    `INSERT INTO entries (id, name, month, week, counts, total, updated_at)
+    `INSERT INTO entries (id, name, entry_date, month, counts, total, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (id) DO UPDATE SET
        name = EXCLUDED.name,
+       entry_date = EXCLUDED.entry_date,
        month = EXCLUDED.month,
-       week = EXCLUDED.week,
        counts = EXCLUDED.counts,
        total = EXCLUDED.total,
        updated_at = EXCLUDED.updated_at
      RETURNING *`,
-    [entry.id, entry.name, entry.month, entry.week, JSON.stringify(entry.counts), entry.total, entry.updatedAt]
+    [entry.id, entry.name, entry.date, entry.month, JSON.stringify(entry.counts), entry.total, entry.updatedAt]
   );
   return rowToEntry(rows[0]);
 }
@@ -117,13 +135,15 @@ function requireAdmin(req, res, next) {
 
 function parseEntryBody(body) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
-  const month = body.month;
-  const week = parseInt(body.week, 10);
+  const date = typeof body.date === 'string' ? body.date.trim() : '';
   const counts = body.counts && typeof body.counts === 'object' ? body.counts : {};
 
   if (!name) return { error: 'name is required' };
-  if (!MONTHS.includes(month)) return { error: 'month must be October or November' };
-  if (!Number.isInteger(week) || week < 1 || week > 5) return { error: 'week must be an integer 1-5' };
+
+  const parsedDate = parseDateString(date);
+  if (!parsedDate.valid) {
+    return { error: parsedDate.reason || 'date must be a valid date (YYYY-MM-DD)' };
+  }
 
   const cleanCounts = {};
   let total = 0;
@@ -133,8 +153,18 @@ function parseEntryBody(body) {
     total += n * POINTS[key];
   }
 
-  const id = `${slugify(name)}__${month.toLowerCase()}__week${week}`;
-  return { entry: { id, name, month, week, counts: cleanCounts, total, updatedAt: new Date().toISOString() } };
+  const id = `${slugify(name)}__${date}`;
+  return {
+    entry: {
+      id,
+      name,
+      date,
+      month: parsedDate.monthName,
+      counts: cleanCounts,
+      total,
+      updatedAt: new Date().toISOString(),
+    },
+  };
 }
 
 app.get('/api/health', async (req, res) => {
@@ -172,9 +202,9 @@ app.post('/api/entries', async (req, res) => {
   }
 });
 
-// Admin-only: edit any entry, including fixing its name/month/week (which
-// changes its id) — regular players can only ever upsert their own id via
-// POST above, so this is the only way to correct someone else's record.
+// Admin-only: edit any entry, including fixing its name/date (which changes
+// its id) — regular players can only ever upsert their own id via POST
+// above, so this is the only way to correct someone else's record.
 app.put('/api/entries/:id', requireAdmin, async (req, res) => {
   const parsed = parseEntryBody(req.body || {});
   if (parsed.error) return res.status(400).json({ error: parsed.error });

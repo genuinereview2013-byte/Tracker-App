@@ -19,6 +19,22 @@ package.json
 Dockerfile          For container-based hosting
 ```
 
+## Upgrading from the earlier week-based version
+
+If you already have this deployed with the old Month/Week log form, the data
+model has changed to track by calendar date instead. This needs a one-time
+database change:
+
+1. In Neon's SQL Editor, run:
+   ```sql
+   DROP TABLE IF EXISTS entries;
+   ```
+   (This deletes any points already logged — there's no automatic
+   week-to-date conversion, since a "Week 2" entry doesn't map to one exact
+   day. Export anything you want to keep first with `SELECT * FROM entries;`.)
+2. Run the current `db/schema.sql` to recreate the table in the new shape.
+3. Redeploy the updated `server.js` and `public/index.html`.
+
 ## 1. Get a free Postgres database (Neon)
 
 1. Go to **[neon.tech](https://neon.tech)** → sign up free (no card required).
@@ -100,8 +116,8 @@ DATABASE_URL="postgresql://..." npm start   # or set it in your process manager 
 
 ## How it works
 
-- `GET /api/entries` — returns every logged week
-- `POST /api/entries` — save/update your own week (`{ name, month, week, counts }`); the server computes the point total itself. Anyone can call this for any name — it's how the shared board works, same as a shared spreadsheet.
+- `GET /api/entries` — returns every logged day
+- `POST /api/entries` — save/update your own day (`{ name, date, counts }`, date as `YYYY-MM-DD`, must fall in October or November); the server computes the point total and derives the month itself. Anyone can call this for any name — it's how the shared board works, same as a shared spreadsheet.
 - `PUT /api/entries/:id` — **admin only.** Edit any entry, including someone else's — also handles fixing a typo'd name (it migrates the entry to the corrected id).
 - `DELETE /api/entries/:id` — **admin only.** Remove an entry.
 - `GET /api/admin/verify` — checks an admin password without changing anything (used by the page's login form).

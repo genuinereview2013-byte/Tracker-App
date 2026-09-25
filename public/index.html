@@ -162,9 +162,9 @@
     padding:20px;
   }
   label.field-label{display:block; font-size:0.8rem; color:var(--ink-soft); margin-bottom:5px; font-weight:600;}
-  .row2{display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:10px; margin-bottom:16px;}
+  .row2{display:grid; grid-template-columns:1.3fr 1fr; gap:10px; margin-bottom:16px;}
   @media (max-width:520px){ .row2{grid-template-columns:1fr;} }
-  input[type=text], select{
+  input[type=text], input[type=date], select{
     width:100%;
     font:inherit;
     padding:9px 10px;
@@ -173,7 +173,7 @@
     background:var(--parchment);
     color:var(--ink);
   }
-  input[type=text]:focus, select:focus, button:focus-visible{
+  input[type=text]:focus, input[type=date]:focus, select:focus, button:focus-visible{
     outline:2px solid var(--marigold-deep); outline-offset:1px;
   }
 
@@ -351,7 +351,7 @@
 
   <section>
     <div class="section-head">
-      <h2>Log your week</h2>
+      <h2>Log your day</h2>
       <span class="section-sub" id="statusLabel"><span class="status-dot" id="statusDot"></span><span id="statusText">connecting…</span></span>
     </div>
     <div class="card">
@@ -365,21 +365,8 @@
           <input type="text" id="nameInput" placeholder="e.g. Priya">
         </div>
         <div>
-          <label class="field-label" for="monthSelect">Month</label>
-          <select id="monthSelect">
-            <option value="October">October</option>
-            <option value="November">November</option>
-          </select>
-        </div>
-        <div>
-          <label class="field-label" for="weekSelect">Week</label>
-          <select id="weekSelect">
-            <option value="1">Week 1</option>
-            <option value="2">Week 2</option>
-            <option value="3">Week 3</option>
-            <option value="4">Week 4</option>
-            <option value="5">Week 5</option>
-          </select>
+          <label class="field-label" for="dateInput">Date</label>
+          <input type="date" id="dateInput">
         </div>
       </div>
 
@@ -387,17 +374,17 @@
 
       <div class="total-bar">
         <div class="total-row">
-          <span class="label">This week's points</span>
+          <span class="label">Points for this day</span>
           <span class="value" id="totalValue">0</span>
         </div>
         <div class="bar-track"><div class="bar-fill" id="totalBar" style="width:0%"></div></div>
       </div>
 
-      <button class="save-btn" id="saveBtn">Save this week</button>
+      <button class="save-btn" id="saveBtn">Save this day</button>
       <div class="save-msg" id="saveMsg"></div>
 
       <details class="mine" id="mineDetails">
-        <summary>My logged weeks</summary>
+        <summary>My logged days</summary>
         <div id="mineList"></div>
       </details>
     </div>
@@ -499,9 +486,21 @@ function slugify(s){
 }
 function currentDocId(){
   const name = document.getElementById('nameInput').value;
-  const month = document.getElementById('monthSelect').value;
-  const week = document.getElementById('weekSelect').value;
-  return `${slugify(name)}__${month.toLowerCase()}__week${week}`;
+  const date = document.getElementById('dateInput').value;
+  return `${slugify(name)}__${date}`;
+}
+function todayInChallengeWindow(){
+  // Default the date field to today if today falls in Oct/Nov; otherwise
+  // leave it blank so the person picks a date themselves.
+  const now = new Date();
+  const m = now.getMonth() + 1; // 1-12
+  if(m === 10 || m === 11){
+    const yyyy = now.getFullYear();
+    const mm = String(m).padStart(2,'0');
+    const dd = String(now.getDate()).padStart(2,'0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return '';
 }
 function computeTotal(){
   return ACTIVITIES.reduce((sum,a)=> sum + counts[a.id]*a.points, 0);
@@ -530,18 +529,18 @@ document.getElementById('activityRows').addEventListener('click', (e)=>{
 
 // ---------- name memory (per-browser convenience only) ----------
 const nameInput = document.getElementById('nameInput');
+const dateInput = document.getElementById('dateInput');
 try{
   const savedName = localStorage.getItem('fbc_name');
   if(savedName) nameInput.value = savedName;
 }catch(e){}
+dateInput.value = todayInChallengeWindow();
 nameInput.addEventListener('change', ()=>{
   try{ localStorage.setItem('fbc_name', nameInput.value); }catch(e){}
-  loadExistingWeek();
+  loadExistingDay();
   renderMine();
 });
-
-document.getElementById('monthSelect').addEventListener('change', ()=>{ loadExistingWeek(); renderMine(); renderLeaderboard(); });
-document.getElementById('weekSelect').addEventListener('change', loadExistingWeek);
+dateInput.addEventListener('change', loadExistingDay);
 
 // ---------- backend sync ----------
 let allEntries = []; // cached copy of every entry on the server
@@ -566,7 +565,7 @@ async function fetchEntries(){
   }
 }
 
-function loadExistingWeek(){
+function loadExistingDay(){
   const name = nameInput.value.trim();
   const id = currentDocId();
   const existing = name ? allEntries.find(e=>e.id===id) : null;
@@ -576,6 +575,7 @@ function loadExistingWeek(){
 
 document.getElementById('saveBtn').addEventListener('click', async ()=>{
   const name = nameInput.value.trim();
+  const date = dateInput.value;
   const msg = document.getElementById('saveMsg');
   const btn = document.getElementById('saveBtn');
   if(!name){
@@ -583,8 +583,11 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     msg.style.color = 'var(--brick)';
     return;
   }
-  const month = document.getElementById('monthSelect').value;
-  const week = parseInt(document.getElementById('weekSelect').value, 10);
+  if(!date){
+    msg.textContent = 'Pick a date first.';
+    msg.style.color = 'var(--brick)';
+    return;
+  }
   btn.disabled = true;
   try{
     let res;
@@ -592,13 +595,13 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
       res = await fetch('/api/entries/' + encodeURIComponent(adminEditingId), {
         method: 'PUT',
         headers: {'Content-Type': 'application/json', 'x-admin-password': adminPassword},
-        body: JSON.stringify({ name, month, week, counts })
+        body: JSON.stringify({ name, date, counts })
       });
     } else {
       res = await fetch('/api/entries', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ name, month, week, counts })
+        body: JSON.stringify({ name, date, counts })
       });
     }
     if(!res.ok){
@@ -607,7 +610,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     }
     const saved = await res.json();
     const wasAdminEdit = !!adminEditingId;
-    msg.textContent = `Saved — ${saved.total} points logged for ${month}, Week ${week}.`;
+    msg.textContent = `Saved — ${saved.total} points logged for ${formatDate(date)}.`;
     msg.style.color = 'var(--sage)';
     if(wasAdminEdit) exitEditMode();
     await fetchEntries();
@@ -615,11 +618,20 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     renderMine();
     if(adminUnlocked) renderAdminList();
   }catch(e){
-    msg.textContent = 'Could not save — check the server is running and reachable.';
+    msg.textContent = e.message && /October|November|date/.test(e.message)
+      ? e.message
+      : 'Could not save — check the server is running and reachable.';
     msg.style.color = 'var(--brick)';
   }
   btn.disabled = false;
 });
+
+function formatDate(dateStr){
+  // dateStr is 'YYYY-MM-DD' — parse manually to avoid timezone shifting
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  return dt.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+}
 
 // ---------- leaderboard ----------
 let activeMonth = 'October';
@@ -642,16 +654,16 @@ function renderLeaderboard(){
   const byName = {};
   monthEntries.forEach(e=>{
     const key = (e.name||'—').trim();
-    if(!byName[key]) byName[key] = {name:key, total:0, weeks:0};
+    if(!byName[key]) byName[key] = {name:key, total:0, days:0};
     byName[key].total += (e.total||0);
-    byName[key].weeks += 1;
+    byName[key].days += 1;
   });
   const ranked = Object.values(byName).sort((a,b)=>b.total-a.total);
   el.innerHTML = ranked.map((r,i)=>{
     const medal = i===0?'🏆':i===1?'🥈':i===2?'🥉':(i+1);
     return `<div class="lb-row ${i===0?'top':''}">
       <div class="lb-rank">${medal}</div>
-      <div class="lb-name">${escapeHtml(r.name)}<div class="lb-sub">${r.weeks} week${r.weeks>1?'s':''} logged</div></div>
+      <div class="lb-name">${escapeHtml(r.name)}<div class="lb-sub">${r.days} day${r.days>1?'s':''} logged</div></div>
       <div class="lb-pts">${r.total}</div>
     </div>`;
   }).join('');
@@ -662,9 +674,9 @@ function renderMine(){
   const list = document.getElementById('mineList');
   if(!name){ list.innerHTML = '<div class="mine-item">Add your name to see your history.</div>'; return; }
   const mine = allEntries.filter(e=> (e.name||'').trim().toLowerCase() === name.toLowerCase())
-                          .sort((a,b)=> (a.month+a.week) < (b.month+b.week) ? -1 : 1);
-  if(mine.length===0){ list.innerHTML = '<div class="mine-item">No weeks logged yet.</div>'; return; }
-  list.innerHTML = mine.map(e=>`<div class="mine-item"><span>${e.month} · Week ${e.week}</span><span>${e.total} pts</span></div>`).join('');
+                          .sort((a,b)=> a.date < b.date ? 1 : -1);
+  if(mine.length===0){ list.innerHTML = '<div class="mine-item">No days logged yet.</div>'; return; }
+  list.innerHTML = mine.map(e=>`<div class="mine-item"><span>${formatDate(e.date)}</span><span>${e.total} pts</span></div>`).join('');
 }
 
 function escapeHtml(s){
@@ -741,7 +753,7 @@ function renderAdminList(){
     <div class="admin-row">
       <div class="ar-info">
         <div class="ar-name">${escapeHtml(e.name)}</div>
-        <div class="ar-meta">${e.month} · Week ${e.week} · updated ${new Date(e.updatedAt).toLocaleString()}</div>
+        <div class="ar-meta">${formatDate(e.date)} · updated ${new Date(e.updatedAt).toLocaleString()}</div>
       </div>
       <div class="ar-total">${e.total}</div>
       <div class="admin-actions">
@@ -764,7 +776,7 @@ document.getElementById('adminList').addEventListener('click', async (e)=>{
 
   if(deleteId){
     const entry = allEntries.find(x=>x.id===deleteId);
-    const label = entry ? `${entry.name} — ${entry.month} Week ${entry.week}` : deleteId;
+    const label = entry ? `${entry.name} — ${formatDate(entry.date)}` : deleteId;
     if(!confirm(`Delete this entry?\n\n${label}\n\nThis can't be undone.`)) return;
     try{
       const res = await fetch('/api/entries/' + encodeURIComponent(deleteId), {
@@ -789,11 +801,10 @@ document.getElementById('adminList').addEventListener('click', async (e)=>{
 function enterEditMode(entry){
   adminEditingId = entry.id;
   nameInput.value = entry.name;
-  document.getElementById('monthSelect').value = entry.month;
-  document.getElementById('weekSelect').value = String(entry.week);
+  dateInput.value = entry.date;
   ACTIVITIES.forEach(a=>{ counts[a.id] = (entry.counts && entry.counts[a.id]) || 0; });
   renderCounts();
-  editBannerText.textContent = `Admin editing ${entry.name}'s ${entry.month} Week ${entry.week} entry.`;
+  editBannerText.textContent = `Admin editing ${entry.name}'s ${formatDate(entry.date)} entry.`;
   editBanner.style.display = 'flex';
   document.getElementById('saveBtn').textContent = 'Save changes';
   editBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -801,10 +812,11 @@ function enterEditMode(entry){
 function exitEditMode(){
   adminEditingId = null;
   editBanner.style.display = 'none';
-  document.getElementById('saveBtn').textContent = 'Save this week';
+  document.getElementById('saveBtn').textContent = 'Save this day';
   const savedName = (()=>{ try{ return localStorage.getItem('fbc_name') || ''; }catch(e){ return ''; } })();
   nameInput.value = savedName;
-  loadExistingWeek();
+  dateInput.value = todayInChallengeWindow();
+  loadExistingDay();
 }
 document.getElementById('cancelEditBtn').addEventListener('click', exitEditMode);
 
@@ -819,7 +831,7 @@ async function init(){
   renderCounts();
   const ok = await fetchEntries();
   if(ok){
-    loadExistingWeek();
+    loadExistingDay();
     renderLeaderboard();
     renderMine();
     await initAdmin();
